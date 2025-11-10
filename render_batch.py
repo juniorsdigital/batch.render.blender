@@ -129,72 +129,6 @@ print(f"✓ Image Node: {IMAGE_NODE_NAME}")
 print(f"\nStarting batch render...\n")
 
 # ============================================================================
-# ANIMATED SPINNER CLASS WITH OUTPUT CAPTURE
-# ============================================================================
-
-class RenderSpinner:
-    """Animated spinner that runs while capturing output"""
-    
-    def __init__(self):
-        self.spinner_chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-        self.is_spinning = False
-        self.thread = None
-        self.current_file = ""
-        self.current_index = 0
-        self.total_files = 0
-        self.start_time = None
-        
-    def _spin(self):
-        """Internal method that updates the spinner animation"""
-        idx = 0
-        while self.is_spinning:
-            # Calculate progress bar
-            if self.total_files > 0:
-                percent = (self.current_index - 1) / self.total_files  # Current in progress
-                bar_length = 40
-                filled = int(bar_length * percent)
-                bar = '█' * filled + '-' * (bar_length - filled)
-                percentage = int(percent * 100)
-            else:
-                bar = '-' * 40
-                percentage = 0
-            
-            # Calculate elapsed time
-            elapsed = time.time() - self.start_time if self.start_time else 0
-            elapsed_str = f"{int(elapsed)}s"
-            
-            # Get current spinner character
-            spinner = self.spinner_chars[idx % len(self.spinner_chars)]
-            
-            # Update display
-            status = f"\rRENDERING: {spinner} [{bar}] {percentage}% ({self.current_index}/{self.total_files}) - {self.current_file} [{elapsed_str}]    "
-            sys.stdout.write(status)
-            sys.stdout.flush()
-            
-            idx += 1
-            time.sleep(0.08)  # Animation speed
-    
-    def start(self, filename, index, total):
-        """Start the spinner animation"""
-        self.current_file = filename
-        self.current_index = index
-        self.total_files = total
-        self.start_time = time.time()
-        self.is_spinning = True
-        self.thread = threading.Thread(target=self._spin, daemon=True)
-        self.thread.start()
-        time.sleep(0.1)  # Give thread time to display first frame
-    
-    def stop(self):
-        """Stop the spinner animation"""
-        self.is_spinning = False
-        if self.thread:
-            self.thread.join()
-        # Clear the spinner line
-        sys.stdout.write('\r' + ' ' * 120 + '\r')
-        sys.stdout.flush()
-
-# ============================================================================
 # OUTPUT CAPTURE CLASS
 # ============================================================================
 
@@ -226,7 +160,6 @@ class OutputCapture:
 # MAIN RENDERING LOOP
 # ============================================================================
 
-spinner = RenderSpinner()
 output_capture = OutputCapture()
 successful_renders = 0
 failed_renders = 0
@@ -248,8 +181,6 @@ for idx, texture_file in enumerate(texture_files, 1):
     render_start = time.time()
     
     try:
-        # Start spinner
-        spinner.start(filename_without_ext, idx, len(texture_files))
         
         # Start capturing Blender output
         output_capture.start()
@@ -269,9 +200,6 @@ for idx, texture_file in enumerate(texture_files, 1):
         
         # Stop capturing output
         captured_output = output_capture.stop()
-        
-        # Stop the spinner
-        spinner.stop()
         
         # Unload the image
         bpy.data.images.remove(img)
@@ -293,8 +221,6 @@ for idx, texture_file in enumerate(texture_files, 1):
             time.sleep(1.5)
         
     except Exception as e:
-        # Stop spinner and output capture on error
-        spinner.stop()
         try:
             captured_output = output_capture.stop()
         except:
